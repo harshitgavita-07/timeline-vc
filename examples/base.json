@@ -1,0 +1,4 @@
+{"fps": 30, "clips": {
+ "intro": {"track": 0, "start": 0, "dur": 90, "asset": "intro.mp4", "in": 0, "effects": {}},
+ "main": {"track": 0, "start": 90, "dur": 600, "asset": "main.mp4", "in": 0, "effects": {}},
+ "music": {"track": 1, "start": 0, "dur": 690, "asset": "music.wav", "in": 0, "effects": {}}}}
