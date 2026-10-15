@@ -5,6 +5,16 @@ from tlvc.merge import merge3, apply_resolution
 from tlvc.store import Repo
 
 
+def load(path):
+    with open(path) as f:
+        return json.load(f)
+
+
+def save(path, obj):
+    with open(path, "w") as f:
+        json.dump(obj, f)
+
+
 def clip(track=0, start=0, dur=30, asset="a.mp4", inn=0, fx=None):
     return {"track": track, "start": start, "dur": dur, "asset": asset, "in": inn, "effects": fx or {}}
 
@@ -96,11 +106,11 @@ class RepoCliTests(unittest.TestCase):
         return p.returncode, p.stdout + p.stderr
 
     def edit(self, d, fn):
-        p = os.path.join(d, "timeline.json"); t = json.load(open(p)); fn(t); json.dump(t, open(p, "w"))
+        p = os.path.join(d, "timeline.json"); t = load(p); fn(t); save(p, t)
 
     def test_branch_merge_conflict_resolve_continue(self):
         with tempfile.TemporaryDirectory() as d:
-            json.dump(BASE, open(os.path.join(d, "timeline.json"), "w"))
+            save(os.path.join(d, "timeline.json"), BASE)
             self.assertEqual(self.run_cli(d, "init")[0], 0)
             self.run_cli(d, "commit", "-m", "base")
             self.run_cli(d, "branch", "color")
@@ -116,7 +126,7 @@ class RepoCliTests(unittest.TestCase):
             self.assertEqual(self.run_cli(d, "resolve", "0", "theirs")[0], 0)
             rc, out = self.run_cli(d, "merge", "--continue")
             self.assertEqual(rc, 0, out)
-            t = json.load(open(os.path.join(d, "timeline.json")))
+            t = load(os.path.join(d, "timeline.json"))
             self.assertEqual(t["clips"]["a"]["asset"], "color.mp4")
             self.assertEqual(t["clips"]["a"]["in"], 3)  # non-conflicting edit kept
             self.assertEqual(t["clips"]["b"]["effects"], {"grade": {"lut": "warm"}})
@@ -124,7 +134,7 @@ class RepoCliTests(unittest.TestCase):
     def test_overlap_must_be_fixed_by_editing(self):
         base = tl(a=clip(2, 100, 30), b=clip(2, 300, 30, "b.mp4"))
         with tempfile.TemporaryDirectory() as d:
-            json.dump(base, open(os.path.join(d, "timeline.json"), "w"))
+            save(os.path.join(d, "timeline.json"), base)
             self.run_cli(d, "init"); self.run_cli(d, "commit", "-m", "base"); self.run_cli(d, "branch", "x")
             self.edit(d, lambda t: t["clips"]["a"].update(start=200)); self.run_cli(d, "commit", "-m", "m")
             self.run_cli(d, "checkout", "x")
@@ -137,16 +147,16 @@ class RepoCliTests(unittest.TestCase):
 
     def test_dirty_tree_blocks_checkout_and_merge(self):
         with tempfile.TemporaryDirectory() as d:
-            json.dump(BASE, open(os.path.join(d, "timeline.json"), "w"))
+            save(os.path.join(d, "timeline.json"), BASE)
             self.run_cli(d, "init"); self.run_cli(d, "commit", "-m", "base"); self.run_cli(d, "branch", "f")
             self.edit(d, lambda t: t["clips"]["a"].update(dur=9))
             self.assertEqual(self.run_cli(d, "checkout", "f")[0], 1)
             self.assertEqual(self.run_cli(d, "merge", "f")[0], 1)
-            self.assertEqual(json.load(open(os.path.join(d, "timeline.json")))["clips"]["a"]["dur"], 9)
+            self.assertEqual(load(os.path.join(d, "timeline.json"))["clips"]["a"]["dur"], 9)
 
     def test_fast_forward(self):
         with tempfile.TemporaryDirectory() as d:
-            json.dump(BASE, open(os.path.join(d, "timeline.json"), "w"))
+            save(os.path.join(d, "timeline.json"), BASE)
             self.run_cli(d, "init"); self.run_cli(d, "commit", "-m", "base"); self.run_cli(d, "branch", "f")
             self.run_cli(d, "checkout", "f"); self.edit(d, lambda t: t["clips"]["a"].update(dur=9))
             self.run_cli(d, "commit", "-m", "f"); self.run_cli(d, "checkout", "main")
